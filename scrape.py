@@ -5,6 +5,8 @@ import json
 import time
 from urllib.request import urlopen
 
+import requests
+
 # Since the code output in this notebook leaks the app_secret,
 # it has been reset by the time you read this.
 
@@ -82,11 +84,18 @@ def getFacebookPageFeedData(page_id, access_token, num_statuses):
     return data
 
 
+def isAcceptable(text):
+    r = requests.post("https://ca-image-analyzer.herokuapp.com/api/analyses",
+                      json={"analysis": {"resource": text, "category": "text"}})
+    return r.json()['results']['value'] == 'Non-Adult'
+
+
 test_status = getFacebookPageFeedData(page_id, access_token, 1)["data"][0]
 message = test_status["message"]
 likes = test_status["likes"]["summary"]["total_count"]
 shares = test_status["shares"]["count"]
-print (json.dumps(test_status, indent=4, sort_keys=True))
+print(json.dumps(test_status, indent=4, sort_keys=True))
 print("message:", message)
 print("shares:", shares)
 print("likes:", likes)
+print("isAcceptable", isAcceptable(message))
