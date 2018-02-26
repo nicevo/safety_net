@@ -3,15 +3,19 @@
 import datetime
 import json
 import time
+import os
 from urllib.request import urlopen
 
 import requests
 
-# Since the code output in this notebook leaks the app_secret,
-# it has been reset by the time you read this.
 
-app_id = "354462865034801"
-app_secret = "10f581c09006493f4276604e95420903"  # DO NOT SHARE WITH ANYONE!
+try:
+    app_id = os.environ['FB_APP_ID']
+    app_secret = os.environ['FB_APP_SECRET']
+except KeyError:
+    print('ERROR: Please define environment variables FB_APP_ID and FB_APP_SECRET.')
+    exit(1)
+
 
 access_token = app_id + "|" + app_secret
 

@@ -1,7 +1,10 @@
 # SafetyNet
 
 ## Summary
-The product is intended for retrieving pages from facebook given a page name and rating the resulting dataset for toxicity. 
+The product is intended for retrieving pages from facebook given a page
+name and rating the resulting dataset for toxicity. To access facebook
+pages, set environement variables `FB_APP_ID`, `FB_APP_SECRET` to the
+app_id and app_secret respectively.
 
 ## Inspiration
 
