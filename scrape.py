@@ -1,6 +1,7 @@
+#!/usr/bin/env python3
+
 # scrape.py
-#
-# Module in Safety Net project
+# Project: Safety Net
 # Purpose: to retrieve messages and statistics for posts in feed of a Facebook page given as input.
 
 import datetime
