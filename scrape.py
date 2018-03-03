@@ -7,6 +7,7 @@
 import datetime
 import json
 import os
+import random
 import requests
 import time
 from urllib.request import urlopen
@@ -21,7 +22,7 @@ def request_until_succeed(url):
                 success = True
         except (Exception):
             time.sleep(5)
-            print("Error for URL %s: %s" % (url, datetime.datetime.now()))
+            print('Error for URL %s: %s' % (url, datetime.datetime.now()))
 
     return response.read().decode('utf8')
 
@@ -38,9 +39,16 @@ def getFacebookPageFeedData(page_id, msg_limit, access_token):
 
 
 def isAcceptable(text):
-    r = requests.post("https://ca-image-analyzer.herokuapp.com/api/analyses",
-                      json={"analysis": {"resource": text, "category": "text"}})
+    r = requests.post('https://ca-image-analyzer.herokuapp.com/api/analyses',
+                      json={'analysis': {'resource': text, 'category': 'text'}})
     return r.json()['results']['value'] == 'Non-Adult'
+
+
+def isAcceptableSimulate(text):
+    if random.random() < 0.6:
+        return True
+    else:
+        return False
 
 
 class FeedDataAnalyzer(object):
@@ -59,7 +67,7 @@ class FeedDataAnalyzer(object):
             if is_ok:
                 ngood += 1
             print('{:<5} {:>6} {:>6}   {:<}'.format(str(is_ok), shares, likes, message[:60]))
-        print('Number of good messages {} of {}, good ratio {}'.format(ngood, len(feed_data), ngood/len(feed_data)))
+        print('\nNumber of good messages {} of {}, good ratio {:.2f}'.format(ngood, len(feed_data), ngood/len(feed_data)))
         return self._good_ratio_threshold < ngood/len(feed_data)
 
 
@@ -73,9 +81,10 @@ if __name__ == '__main__':
 
     access_token = app_id + '|' + app_secret
     page_id = 'nytimes'
+    random.seed()
 
-    feed_data = getFacebookPageFeedData(page_id, 10, access_token)['data']
-    fda = FeedDataAnalyzer(isAcceptable)
+    feed_data = getFacebookPageFeedData(page_id, 20, access_token)['data']
+    fda = FeedDataAnalyzer(isAcceptableSimulate)
     verdict = fda.analize(feed_data)
     print( 'Verdict for the page:', verdict  )
 
