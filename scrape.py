@@ -1,47 +1,38 @@
-#!/usr/bin/env python3
-
-# scrape.py
-# Project: Safety Net
-# Purpose: to retrieve messages and statistics for posts in feed of a Facebook page given as input.
-
 import datetime
 import json
 import os
 import random
 import requests
-import time
-from urllib.request import urlopen
+from pprint import pprint
 
 
 def request_until_succeed(url):
     success = False
     while success is False:
         try:
-            response = urlopen(url)
-            if response.getcode() == 200:
+            response = requests.get(url)
+            if response.status_code == 200:
                 success = True
-        except (Exception):
+            else:
+                print('\n{}: status {} for URL {}, retrying in 5s'.format(datetime.datetime.now(), response.status_code,
+                                                                          url))
+                time.sleep(5)
+        except Exception as e:
+            print('\n{}: error for URL {}: {}, retrying in 5s'.format(datetime.datetime.now(), url, e))
             time.sleep(5)
-            print('Error for URL %s: %s' % (url, datetime.datetime.now()))
 
-    return response.read().decode('utf8')
+    return response.text
 
 
 def getFacebookPageFeedData(page_id, msg_limit, access_token):
     # construct the URL string from template
     url_template = ('https://graph.facebook.com/{}/feed/?fields=message,link,created_time,type,name,id,'
-        'likes.limit(1).summary(true),comments.limit(1).summary(true),shares&'
-        'limit={}&access_token={}')
+                    'likes.limit(1).summary(true),comments.limit(1).summary(true),shares&'
+                    'limit={}&access_token={}')
     url = url_template.format(page_id, msg_limit, access_token)
     # retrieve data
     data = json.loads(request_until_succeed(url))
     return data
-
-
-def isAcceptable(text):
-    r = requests.post('https://ca-image-analyzer.herokuapp.com/api/analyses',
-                      json={'analysis': {'resource': text, 'category': 'text'}})
-    return r.json()['results']['value'] == 'Non-Adult'
 
 
 def isAcceptableSimulate(text):
@@ -51,41 +42,69 @@ def isAcceptableSimulate(text):
         return False
 
 
-class FeedDataAnalyzer(object):
-    def __init__(self, acceptability_check):
-        self._acc_check = acceptability_check
-        self._good_ratio_threshold = 0.5
+def analize(feed_data, acceptability_check):
+    ngood = 0
+    result = {}
+    print('isOk  shares  likes   message')
+    result["messages"] = []
+    for m in feed_data:
+        subresult = {}
+        subresult["message"] = m['message']
+        subresult["likes"] = m['likes']['summary']['total_count']
+        subresult["shares"] = m['shares']['count']
+        subresult["is_ok"] = acceptability_check(m['message'])
+        if subresult["is_ok"]:
+            ngood += 1
+        result["messages"].append(subresult)
+    result["ngood"] = ngood
+    result["verdict"] = '\nNumber of good messages {} of {}, good ratio {:.2f}'.format(ngood, len(feed_data),
+                                                                                       ngood / len(feed_data))
+    return result
 
-    def analize(self, feed_data):
-        ngood = 0
-        print('isOk  shares  likes   message')
-        for m in feed_data:
-            message = m['message']
-            likes = m['likes']['summary']['total_count']
-            shares = m['shares']['count']
-            is_ok = self._acc_check(message) 
-            if is_ok:
-                ngood += 1
-            print('{:<5} {:>6} {:>6}   {:<}'.format(str(is_ok), shares, likes, message[:60]))
-        print('\nNumber of good messages {} of {}, good ratio {:.2f}'.format(ngood, len(feed_data), ngood/len(feed_data)))
-        return self._good_ratio_threshold < ngood/len(feed_data)
 
-
-if __name__ == '__main__':
+def process(page_id='nytimes', msgcount=2):
     try:
         app_id = os.environ['FB_APP_ID']
         app_secret = os.environ['FB_APP_SECRET']
     except KeyError as e:
-        print('ERROR: Please define environment variables FB_APP_ID and FB_APP_SECRET.')
-        exit(1)
+        return {
+            "statusCode": 500,
+            "body": 'ERROR: Please define environment variables FB_APP_ID and FB_APP_SECRET.'
+        }
 
     access_token = app_id + '|' + app_secret
+
+    feed_data = getFacebookPageFeedData(page_id, msgcount, access_token)['data']
+    result = analize(feed_data, isAcceptableSimulate)
+
+    body = {
+        "page": page_id,
+        "msgcount": msgcount,
+        "verdict": result
+    }
+    return body
+
+
+def endpoint(event, context):
     page_id = 'nytimes'
-    random.seed()
+    if 'page' in event['queryStringParameters']:
+        page_id = event['queryStringParameters']['page']
 
-    feed_data = getFacebookPageFeedData(page_id, 20, access_token)['data']
-    fda = FeedDataAnalyzer(isAcceptableSimulate)
-    verdict = fda.analize(feed_data)
-    print( 'Verdict for the page:', verdict  )
+    msgcount = 2
+    if 'msgcount' in event['queryStringParameters']:
+        msgcount = (int)(event['queryStringParameters']['msgcount'])
+    if msgcount > 100:
+        msgcount = 100
 
-# [eof]
+    body = process(page_id, msgcount)
+
+    response = {
+        "statusCode": 200,
+        "body": json.dumps(body)
+    }
+
+    return response
+
+
+if __name__ == '__main__':
+    pprint(process())

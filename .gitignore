@@ -1,1 +1,6 @@
+.serverless
+*.pyc
+*.pyo
+node_modules/
+package-lock.json
 .idea
