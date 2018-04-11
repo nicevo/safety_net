@@ -16,6 +16,7 @@ functions:
     environment:
       FB_APP_ID:  ${ssm:fbAppId}
       FB_APP_SECRET: ${ssm:fbAppSecret}
+      PERSPECTIVE_API_KEY: ${ssm:perspectiveApiKey}
 
 plugins:
   - serverless-python-requirements

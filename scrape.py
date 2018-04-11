@@ -3,7 +3,9 @@ import json
 import os
 import random
 import requests
+import time
 from pprint import pprint
+from googleapiclient import discovery
 
 
 def request_until_succeed(url):
@@ -35,30 +37,33 @@ def getFacebookPageFeedData(page_id, msg_limit, access_token):
     return data
 
 
-def isAcceptableSimulate(text):
-    if random.random() < 0.6:
-        return True
-    else:
-        return False
+def analyzeToxicity(text, key):
+    # Generates API client object dynamically based on service name and version.
+    service = discovery.build('commentanalyzer', 'v1alpha1', developerKey=key)
+    analyze_request = {
+        'comment': {'text': text},
+        'requestedAttributes': {'TOXICITY': {}}
+    }
+    response = service.comments().analyze(body=analyze_request).execute()
+    #pprint(response)
+    return response['attributeScores']['TOXICITY']['summaryScore']['value']
 
 
-def analize(feed_data, acceptability_check):
-    ngood = 0
+def analize(feed_data, key):
+    sum = 0
+    count = 0;
     result = {}
-    print('isOk  shares  likes   message')
     result["messages"] = []
     for m in feed_data:
         subresult = {}
         subresult["message"] = m['message']
         subresult["likes"] = m['likes']['summary']['total_count']
         subresult["shares"] = m['shares']['count']
-        subresult["is_ok"] = acceptability_check(m['message'])
-        if subresult["is_ok"]:
-            ngood += 1
+        subresult["toxicity"] = analyzeToxicity(m['message'], key)
+        sum += subresult["toxicity"]
+        count += 1;
         result["messages"].append(subresult)
-    result["ngood"] = ngood
-    result["verdict"] = '\nNumber of good messages {} of {}, good ratio {:.2f}'.format(ngood, len(feed_data),
-                                                                                       ngood / len(feed_data))
+    result["average_score"] = sum / count
     return result
 
 
@@ -66,16 +71,17 @@ def process(page_id='nytimes', msgcount=2):
     try:
         app_id = os.environ['FB_APP_ID']
         app_secret = os.environ['FB_APP_SECRET']
+        key = os.environ['PERSPECTIVE_API_KEY']
     except KeyError as e:
         return {
             "statusCode": 500,
-            "body": 'ERROR: Please define environment variables FB_APP_ID and FB_APP_SECRET.'
+            "body": 'ERROR: Please define environment variables PERSPECTIVE_API_KEY, FB_APP_ID and FB_APP_SECRET.'
         }
 
     access_token = app_id + '|' + app_secret
 
     feed_data = getFacebookPageFeedData(page_id, msgcount, access_token)['data']
-    result = analize(feed_data, isAcceptableSimulate)
+    result = analize(feed_data, key)
 
     body = {
         "page": page_id,
@@ -107,4 +113,4 @@ def endpoint(event, context):
 
 
 if __name__ == '__main__':
-    pprint(process())
+    pprint(process("natgeo",3))

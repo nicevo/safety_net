@@ -33,12 +33,14 @@ Configure secrets
 ```
 aws ssm put-parameter --name fbAppId --type String --value XXXXXXXXXX --profile serverless --region us-east-1
 aws ssm put-parameter --name fbAppSecret --type String --value XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX --profile serverless --region us-east-1
+
+aws ssm put-parameter --name perspectiveApiKey --type String --value XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX --profile serverless --region us-east-1
 ```
 
 ## How to run
 Run in console/terminal/shell:
 ```
-FB_APP_ID=XXXXXXXXXX FB_APP_SECRET=XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX python3 scrape.py
+PERSPECTIVE_API_KEY=XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX FB_APP_ID=XXXXXXXXXX FB_APP_SECRET=XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX python3 scrape.py
 ```
 
 ## Deploy and test
@@ -87,3 +89,8 @@ SLS_DEBUG=* sls deploy -v --stage stg --aws-profile serverless
 ```
 
  
+## Example facebook pages:
+- cnn
+- nytimes
+- natgeo
+- DonaldTrump
